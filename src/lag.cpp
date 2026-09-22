@@ -46,9 +46,42 @@ static INLINE_FUNCTION BOOL isDelayProtocol(const PacketNode *packet)
     }
     else if (version == 6)
     {
-        if (packet->packetLen < 40)
+        unsigned int offset = 40;
+        if (packet->packetLen < offset)
             return FALSE;
         protocol = data[6];
+        while (protocol != IPPROTO_TCP && protocol != IPPROTO_UDP)
+        {
+            unsigned int hdrBytes;
+            if (protocol == 0 || protocol == 43 || protocol == 60)
+            {
+                if (packet->packetLen < offset + 1)
+                    return FALSE;
+                hdrBytes = ((unsigned int)data[offset] + 1) * 8;
+            }
+            else if (protocol == 51)
+            {
+                if (packet->packetLen < offset + 2)
+                    return FALSE;
+                hdrBytes = ((unsigned int)data[offset + 1] + 2) * 4;
+            }
+            else if (protocol == 44)
+            {
+                if (packet->packetLen < offset + 8)
+                    return FALSE;
+                if (data[offset + 2] != 0 || (data[offset + 3] >> 3) != 0)
+                    return FALSE;
+                hdrBytes = 8;
+            }
+            else
+            {
+                return FALSE;
+            }
+            offset += hdrBytes;
+            if (packet->packetLen < offset + 1)
+                return FALSE;
+            protocol = data[offset];
+        }
     }
     else
     {

@@ -170,9 +170,16 @@ void showStatus(const char *line);
 
 void logMessage(const char *fmt, ...)
 {
+#ifdef _DEBUG
+    char logBuf[1024];
     va_list args;
     va_start(args, fmt);
+    vsnprintf(logBuf, sizeof(logBuf), fmt, args);
     va_end(args);
+    OutputDebugStringA(logBuf);
+#else
+    (void)fmt;
+#endif
 }
 
 static int uiOnDialogShow(Ihandle *ih, int state);
@@ -2078,6 +2085,7 @@ static void updateSetupUI(Ihandle *parent)
     IupSetAttribute(versionLabel, "FGCOLOR", Theme::MutedText);
     IupSetAttribute(updateLabel, "BGCOLOR", Theme::Panel);
     IupSetAttribute(updateLabel, "FGCOLOR", Theme::MutedText);
+    IupSetAttribute(updateLabel, "EXPAND", "HORIZONTAL");
     IupSetAttribute(updateButton, "FGCOLOR", "0 0 0");
     IupSetAttribute(updateButton, "PADDING", "6x2");
     IupSetAttribute(updateButton, "TIP", "Check for updates now");

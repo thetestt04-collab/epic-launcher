@@ -15,9 +15,6 @@
 #define SYNCED_VALUE "__SYNCED_VALUE"
 #define INTEGER_MAX "__INTEGER_MAX"
 #define INTEGER_MIN "__INTEGER_MIN"
-#define FIXED_MAX "__FIXED_MAX"
-#define FIXED_MIN "__FIXED_MIN"
-#define FIXED_EPSILON 0.01
 
 #define I2S(x) ((short)((x) & 0xFFFF))
 
@@ -99,11 +96,8 @@ PacketNode *insertAfter(PacketNode *node, PacketNode *target);
 PacketNode *appendNode(PacketNode *node);
 short isListEmpty();
 
-int uiSyncChance(Ihandle *ih);
 int uiSyncToggle(Ihandle *ih, int state);
 int uiSyncInteger(Ihandle *ih);
-int uiSyncFixed(Ihandle *ih);
-int uiSyncInt32(Ihandle *ih);
 
 struct Module
 {
@@ -141,8 +135,6 @@ void cleanupPacketPool();
 
 #define STR_HELPER(x) #x
 #define STR(x) STR_HELPER(x)
-
-short calcChance(short chance);
 
 [[nodiscard]] static INLINE_FUNCTION BOOL checkDirection(BOOL outboundPacket, short handleInbound,
                                                          short handleOutbound) noexcept
