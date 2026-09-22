@@ -7,9 +7,7 @@
 #define APP_NAME "EpicGamesLauncher"
 #define MSG_BUFSIZE 512
 #define FILTER_BUFSIZE 1024
-#define NAME_SIZE 16
 #define MODULE_CNT 1
-#define ICON_UPDATE_MS 500
 
 #define CONTROLS_HANDLE "__CONTROLS_HANDLE"
 #define SYNCED_VALUE "__SYNCED_VALUE"

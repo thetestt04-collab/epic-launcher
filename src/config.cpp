@@ -120,6 +120,11 @@ private:
                     if (!parseString(preset.expression))
                         return false;
                 }
+                else if (key == "pingTarget")
+                {
+                    if (!parseString(preset.pingTarget))
+                        return false;
+                }
                 else if (!skipValue())
                 {
                     return false;
@@ -353,9 +358,9 @@ AppConfig makeDefaultConfig()
 {
     AppConfig config;
     config.filters = {
-        {"game", "ip.DstAddr >= 193.57.88.0 and ip.DstAddr <= 193.57.88.255"},
-        {"All sending packets", "outbound"},
-        {"All receiving packets", "inbound"},
+        {"game", "outbound", ""},
+        {"All sending packets", "outbound", ""},
+        {"All receiving packets", "inbound", ""},
     };
     return config;
 }
@@ -468,6 +473,8 @@ bool saveConfigJson(const std::string &path, const AppConfig &config, std::strin
         appendJsonString(out, config.filters[i].name);
         out += ",\n      \"expression\": ";
         appendJsonString(out, config.filters[i].expression);
+        out += ",\n      \"pingTarget\": ";
+        appendJsonString(out, config.filters[i].pingTarget);
         out += "\n    }";
         if (i + 1 < config.filters.size())
             out += ",";

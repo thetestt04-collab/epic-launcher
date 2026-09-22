@@ -23,7 +23,6 @@
 #include <string.h>
 
 extern float lagGetBufferFill();
-extern int lagGetBufSize();
 extern int lagGetFlushCount();
 extern int lagGetLastFlushSize();
 extern DWORD lagGetLastFlushTime();
@@ -145,6 +144,7 @@ constexpr SymbolPixels EXIT_PIXELS = makeSymbolPixels(EXIT_ROWS);
 
 static CRITICAL_SECTION pingCritSec;
 static HANDLE pingThreadHandle = NULL;
+static HANDLE pingTargetEvent = NULL;
 static std::atomic_bool pingRunning{false};
 static BOOL pingCritInitialized = FALSE;
 static int pingSamples[PING_SAMPLE_WINDOW] = {0};
@@ -359,6 +359,34 @@ static std::string configFilePath()
     return configPath.substr(0, separator + 1) + CONFIG_FILE;
 }
 
+static void applyPresetPingTarget(size_t presetIndex)
+{
+    const char *target = "";
+    if (presetIndex < appConfig.filters.size() &&
+        !appConfig.filters[presetIndex].pingTarget.empty())
+    {
+        target = appConfig.filters[presetIndex].pingTarget.c_str();
+    }
+    else if (!appConfig.pingTarget.empty())
+    {
+        target = appConfig.pingTarget.c_str();
+    }
+    if (pingCritInitialized)
+    {
+        EnterCriticalSection(&pingCritSec);
+        strncpy_s(pingTargetOutbound, sizeof(pingTargetOutbound), target, _TRUNCATE);
+        LeaveCriticalSection(&pingCritSec);
+    }
+    else
+    {
+        strncpy_s(pingTargetOutbound, sizeof(pingTargetOutbound), target, _TRUNCATE);
+    }
+    if (pingTargetEvent != NULL)
+    {
+        SetEvent(pingTargetEvent);
+    }
+}
+
 void loadConfig()
 {
     appConfig = makeDefaultConfig();
@@ -369,6 +397,7 @@ void loadConfig()
     {
         configLoadMessage = "Using defaults: executable path is unavailable.";
         configureHotkey(appConfig.hotkey);
+        applyPresetPingTarget(0);
         return;
     }
 
@@ -386,8 +415,7 @@ void loadConfig()
     {
         appConfig.hotkey = hotkeyDisplayName;
     }
-    strncpy_s(pingTargetOutbound, sizeof(pingTargetOutbound), appConfig.pingTarget.c_str(),
-              _TRUNCATE);
+    applyPresetPingTarget(0);
 }
 
 static void registerHotkey(HWND hWnd)
@@ -411,10 +439,7 @@ static void unregisterHotkey()
     if (!hotkeyRegistered)
         return;
 
-    if (hotkeyToggle == VK_XBUTTON1 || hotkeyToggle == VK_XBUTTON2)
-    {
-    }
-    else if (hotkeyId != 0)
+    if (hotkeyId != 0)
     {
         HWND hWnd = (HWND)IupGetAttribute(dialog, "HWND");
         if (hWnd)
@@ -1290,6 +1315,10 @@ static int uiKillCb(Ihandle *ih)
     {
         LOG("Stopping ping thread...");
         pingRunning.store(false, std::memory_order_release);
+        if (pingTargetEvent != NULL)
+        {
+            SetEvent(pingTargetEvent);
+        }
 
         if (pingThreadHandle)
         {
@@ -1305,6 +1334,11 @@ static int uiKillCb(Ihandle *ih)
     {
         DeleteCriticalSection(&pingCritSec);
         pingCritInitialized = FALSE;
+    }
+    if (pingTargetEvent != NULL)
+    {
+        CloseHandle(pingTargetEvent);
+        pingTargetEvent = NULL;
     }
     LOG("Ping cleanup completed");
 
@@ -1566,26 +1600,27 @@ static BOOL resolvePingTargetAddress(const char *target, IPAddr *targetAddress)
     return TRUE;
 }
 
+static void sanitizePingTarget(char *out, size_t outSize, const char *target)
+{
+    size_t outIx = 0;
+    if (target != nullptr)
+    {
+        for (size_t inIx = 0; target[inIx] != '\0' && outIx + 1 < outSize; ++inIx)
+        {
+            char c = target[inIx];
+            if (c == '"' || c == '\r' || c == '\n')
+                continue;
+            out[outIx++] = c;
+        }
+    }
+    out[outIx] = '\0';
+}
+
 static unsigned __stdcall PingThreadFunc(void *arg)
 {
     UNREFERENCED_PARAMETER(arg);
 
-    const char *pingTarget = pingTargetOutbound[0] ? pingTargetOutbound : "193.57.88.1";
-    char safeTarget[256];
-    size_t outIx = 0;
-    for (size_t inIx = 0; pingTarget[inIx] != '\0' && outIx + 1 < sizeof(safeTarget); ++inIx)
-    {
-        char c = pingTarget[inIx];
-        if (c == '"' || c == '\r' || c == '\n')
-            continue;
-        safeTarget[outIx++] = c;
-    }
-    safeTarget[outIx] = '\0';
-    if (safeTarget[0] == '\0')
-    {
-        strcpy_s(safeTarget, sizeof(safeTarget), "193.57.88.1");
-    }
-
+    char safeTarget[256] = {0};
     HANDLE icmpHandle = INVALID_HANDLE_VALUE;
     IPAddr targetAddress = 0;
     ULONGLONG lastResolveAttempt = 0;
@@ -1598,8 +1633,36 @@ static unsigned __stdcall PingThreadFunc(void *arg)
     {
         ULONGLONG cycleStart = GetTickCount64();
         DWORD cycleDelayMs = pingIntervalMs;
+        char currentTarget[256];
+        char sanitizedTarget[256];
 
-        if (targetAddress == 0 || (cycleStart - lastResolveAttempt) >= 60000)
+        EnterCriticalSection(&pingCritSec);
+        strncpy_s(currentTarget, sizeof(currentTarget), pingTargetOutbound, _TRUNCATE);
+        LeaveCriticalSection(&pingCritSec);
+        sanitizePingTarget(sanitizedTarget, sizeof(sanitizedTarget), currentTarget);
+        if (strcmp(sanitizedTarget, safeTarget) != 0)
+        {
+            strcpy_s(safeTarget, sizeof(safeTarget), sanitizedTarget);
+            targetAddress = 0;
+            EnterCriticalSection(&pingCritSec);
+            pingSampleCount = 0;
+            pingSampleNext = 0;
+            pingLastRawMs = -1;
+            pingBaseMs = -1;
+            pingFailureStreak = 0;
+            pingLastSuccessTick = 0;
+            LeaveCriticalSection(&pingCritSec);
+        }
+
+        if (safeTarget[0] == '\0')
+        {
+            EnterCriticalSection(&pingCritSec);
+            pingRecordFailureLocked();
+            LeaveCriticalSection(&pingCritSec);
+            cycleDelayMs = pingRetryMs;
+            targetAddress = 0;
+        }
+        else if (targetAddress == 0 || (cycleStart - lastResolveAttempt) >= 60000)
         {
             lastResolveAttempt = cycleStart;
             if (!resolvePingTargetAddress(safeTarget, &targetAddress))
@@ -1665,7 +1728,13 @@ static unsigned __stdcall PingThreadFunc(void *arg)
         while (pingRunning.load(std::memory_order_acquire) && remainingMs > 0)
         {
             DWORD chunkMs = (remainingMs > 100) ? 100 : remainingMs;
-            Sleep(chunkMs);
+            DWORD waitStatus = WAIT_TIMEOUT;
+            if (pingTargetEvent != NULL)
+                waitStatus = WaitForSingleObject(pingTargetEvent, chunkMs);
+            else
+                Sleep(chunkMs);
+            if (waitStatus == WAIT_OBJECT_0)
+                break;
             remainingMs -= chunkMs;
         }
     }
@@ -1699,6 +1768,7 @@ static int uiPingTimerCb(Ihandle *ih)
         {
             InitializeCriticalSection(&pingCritSec);
             pingCritInitialized = TRUE;
+            pingTargetEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
             memset(pingSamples, 0, sizeof(pingSamples));
             pingSampleCount = 0;
             pingSampleNext = 0;
@@ -1754,8 +1824,10 @@ static int uiListSelectCb(Ihandle *ih, char *text, int item, int state)
     UNREFERENCED_PARAMETER(ih);
     if (state == 1 && item >= 1 && static_cast<UINT>(item) <= filterListCount)
     {
+        const size_t presetIndex = static_cast<size_t>(item - 1);
         IupStoreAttribute(filterText, "VALUE",
-                          appConfig.filters[static_cast<std::size_t>(item - 1)].expression.c_str());
+                          appConfig.filters[presetIndex].expression.c_str());
+        applyPresetPingTarget(presetIndex);
     }
     return IUP_DEFAULT;
 }
@@ -2126,7 +2198,7 @@ static void handleUpdateResult(WPARAM automatic, LPARAM payload)
             snprintf(labelBuf, sizeof(labelBuf), "v%s available", result->latestVersion.c_str());
             IupStoreAttribute(updateLabel, "TITLE", labelBuf);
         }
-        if (automatic == 0 || mainWindowHandle != nullptr)
+        if (automatic == 0)
         {
             char boxBuf[512];
             snprintf(boxBuf, sizeof(boxBuf),

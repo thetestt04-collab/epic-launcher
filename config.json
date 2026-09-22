@@ -6,15 +6,18 @@
   "filters": [
     {
       "name": "game",
-      "expression": "ip.DstAddr >= 193.57.88.0 and ip.DstAddr <= 193.57.88.255"
+      "expression": "ip.DstAddr >= 193.57.88.0 and ip.DstAddr <= 193.57.88.255",
+      "pingTarget": "193.57.88.1"
     },
     {
       "name": "All sending packets",
-      "expression": "outbound"
+      "expression": "outbound",
+      "pingTarget": "1.1.1.1"
     },
     {
       "name": "All receiving packets",
-      "expression": "inbound"
+      "expression": "inbound",
+      "pingTarget": "1.1.1.1"
     }
   ]
 }

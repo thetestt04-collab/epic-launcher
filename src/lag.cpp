@@ -12,7 +12,7 @@
 #define DRAIN_PER_CYCLE 16
 #define PRESSURE_HIGH_WATERMARK 1750
 #define PRESSURE_RELEASE_PER_CYCLE 8
-#define LAG_DEFAULT 1400
+#define LAG_DEFAULT 500
 
 static Ihandle *inboundCheckbox, *outboundCheckbox, *timeInput;
 
@@ -110,8 +110,6 @@ float lagGetBufferFill()
     return static_cast<float>(bufSize.load(std::memory_order_relaxed)) /
            static_cast<float>(KEEP_AT_MOST);
 }
-
-int lagGetBufSize() { return bufSize.load(std::memory_order_relaxed); }
 
 static Ihandle *lagSetupUI()
 {

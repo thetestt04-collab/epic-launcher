@@ -7,7 +7,6 @@
 #include "common.h"
 #define DIVERT_PRIORITY 0
 #define MAX_PACKETSIZE 0xFFFF
-#define READ_TIME_PER_STEP 3
 #define CLOCK_WAITMS 10
 #define NORMAL_SEND_PER_CYCLE 200
 #define DRAIN_SEND_PER_CYCLE 16

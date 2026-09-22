@@ -9,12 +9,13 @@ struct FilterPreset
 {
     std::string name;
     std::string expression;
+    std::string pingTarget;
 };
 
 struct AppConfig
 {
     std::string hotkey = "MOUSE5";
-    std::string pingTarget = "193.57.88.1";
+    std::string pingTarget;
     std::vector<FilterPreset> filters;
     std::string updateCheckUrl;
     std::string updatePageUrl;
