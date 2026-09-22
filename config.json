@@ -1,8 +1,8 @@
 {
   "hotkey": "MOUSE5",
   "pingTarget": "193.57.88.1",
-  "updateCheckUrl": "",
-  "updatePageUrl": "",
+  "updateCheckUrl": "https://api.github.com/repos/thetestt04-collab/epic-launcher/releases/latest",
+  "updatePageUrl": "https://github.com/thetestt04-collab/epic-launcher/releases/latest",
   "filters": [
     {
       "name": "game",
