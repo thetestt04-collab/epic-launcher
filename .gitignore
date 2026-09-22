@@ -1,0 +1,17 @@
+# Build output
+build/
+
+# Third-party dependencies (downloaded by setup-deps.ps1)
+external/
+
+# Stray compiler/test artifacts outside build/
+*.o
+*.obj
+*.exe
+*.dll
+
+# Local secrets
+.env
+
+# Tests
+tests/

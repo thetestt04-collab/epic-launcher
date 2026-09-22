@@ -1,0 +1,20 @@
+{
+  "hotkey": "MOUSE5",
+  "pingTarget": "193.57.88.1",
+  "updateCheckUrl": "",
+  "updatePageUrl": "",
+  "filters": [
+    {
+      "name": "game",
+      "expression": "ip.DstAddr >= 193.57.88.0 and ip.DstAddr <= 193.57.88.255"
+    },
+    {
+      "name": "All sending packets",
+      "expression": "outbound"
+    },
+    {
+      "name": "All receiving packets",
+      "expression": "inbound"
+    }
+  ]
+}
