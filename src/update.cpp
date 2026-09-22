@@ -243,8 +243,9 @@ bool updateFetchHttpText(const std::string &url, std::string &output, std::strin
     if (parts.dwExtraInfoLength > 0)
         path.append(parts.lpszExtraInfo, parts.dwExtraInfoLength);
 
-    HINTERNET session = WinHttpOpen(L"EpicGamesLauncher-Updater/1.0", WINHTTP_ACCESS_TYPE_AUTOMATIC_PROXY,
-                                    WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
+    HINTERNET session =
+        WinHttpOpen(L"EpicGamesLauncher-Updater/1.0", WINHTTP_ACCESS_TYPE_AUTOMATIC_PROXY,
+                    WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
     if (session == nullptr)
     {
         errorMessage = "Could not start the HTTP session.";

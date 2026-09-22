@@ -534,7 +534,7 @@ static int toggleFiltering(Ihandle *ih)
     IupSetAttribute(pingNoteLabel, "FONT", "Segoe UI, 8");
     IupSetAttribute(pingNoteLabel, "PADDING", "8x2");
     IupSetAttribute(pingNoteLabel, "TIP",
-                     "Games use UDP; this measures ICMP replies, so routes may differ.");
+                    "Games use UDP; this measures ICMP replies, so routes may differ.");
 
     filterText = IupText(NULL);
     filterButton = IupButton(NULL, NULL);
@@ -1825,8 +1825,7 @@ static int uiListSelectCb(Ihandle *ih, char *text, int item, int state)
     if (state == 1 && item >= 1 && static_cast<UINT>(item) <= filterListCount)
     {
         const size_t presetIndex = static_cast<size_t>(item - 1);
-        IupStoreAttribute(filterText, "VALUE",
-                          appConfig.filters[presetIndex].expression.c_str());
+        IupStoreAttribute(filterText, "VALUE", appConfig.filters[presetIndex].expression.c_str());
         applyPresetPingTarget(presetIndex);
     }
     return IUP_DEFAULT;
@@ -1978,8 +1977,8 @@ static void pollKeyboardHotkeyFallback()
     const bool ctrlDown = (GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0;
     const bool altDown = (GetAsyncKeyState(VK_MENU) & 0x8000) != 0;
     const bool shiftDown = (GetAsyncKeyState(VK_SHIFT) & 0x8000) != 0;
-    const bool winDown = ((GetAsyncKeyState(VK_LWIN) & 0x8000) != 0) ||
-                         ((GetAsyncKeyState(VK_RWIN) & 0x8000) != 0);
+    const bool winDown =
+        ((GetAsyncKeyState(VK_LWIN) & 0x8000) != 0) || ((GetAsyncKeyState(VK_RWIN) & 0x8000) != 0);
     bool down = (GetAsyncKeyState(hotkeyToggle) & 0x8000) != 0;
     if (down)
     {
@@ -2083,10 +2082,7 @@ static void captureHotkeyKey(int vk)
     applyHotkeyBinding(binding);
 }
 
-static const std::vector<int> &captureKeyList()
-{
-    return hotkeyCaptureKeys();
-}
+static const std::vector<int> &captureKeyList() { return hotkeyCaptureKeys(); }
 
 static void pollHotkeyCapture()
 {
