@@ -29,8 +29,6 @@ static LRESULT CALLBACK ThreadedMouseHookProc(int nCode, WPARAM wParam, LPARAM l
         {
             WORD button = HIWORD(pMouseStruct->mouseData);
 
-            LOG("Mouse button pressed: %d, looking for: %d", button, hotkeyToggle);
-
             if ((hotkeyToggle == VK_XBUTTON1 && button == XBUTTON1) ||
                 (hotkeyToggle == VK_XBUTTON2 && button == XBUTTON2))
             {
@@ -48,6 +46,8 @@ static LRESULT CALLBACK ThreadedMouseHookProc(int nCode, WPARAM wParam, LPARAM l
                 if (configuredButtonDown)
                     return CallNextHookEx(NULL, nCode, wParam, lParam);
                 configuredButtonDown = true;
+                if (!hotkeyClaimPress())
+                    return CallNextHookEx(NULL, nCode, wParam, lParam);
                 LOG("Triggering hotkey for button %d", button);
 
                 HWND hWnd = getMainWindowHandle();
@@ -58,6 +58,7 @@ static LRESULT CALLBACK ThreadedMouseHookProc(int nCode, WPARAM wParam, LPARAM l
                 else
                 {
                     LOG("Main window not ready yet; skipping mouse hotkey toggle");
+                    hotkeyReleasePress();
                 }
             }
         }
@@ -68,8 +69,8 @@ static LRESULT CALLBACK ThreadedMouseHookProc(int nCode, WPARAM wParam, LPARAM l
                 (hotkeyToggle == VK_XBUTTON2 && button == XBUTTON2))
             {
                 configuredButtonDown = false;
+                hotkeyReleasePress();
             }
-            LOG("Mouse button released");
         }
     }
 
@@ -138,8 +139,17 @@ BOOL StartMouseHookThread()
 {
     if (mouseThread)
     {
-        LOG("Mouse hook thread already running");
-        return TRUE;
+        if (WaitForSingleObject(mouseThread, 0) == WAIT_TIMEOUT)
+            return TRUE;
+        // Hook thread died; clean up so the caller can retry.
+        CloseHandle(mouseThread);
+        mouseThread = NULL;
+        mouseThreadId = 0;
+        if (stopEvent)
+        {
+            CloseHandle(stopEvent);
+            stopEvent = NULL;
+        }
     }
 
     stopEvent = CreateEvent(NULL, TRUE, FALSE, NULL);

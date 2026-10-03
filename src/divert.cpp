@@ -442,11 +442,6 @@ static DWORD divertReadLoop(LPVOID arg)
 
     for (;;)
     {
-#ifdef _DEBUG
-        if (!isListEmpty())
-            LOG("List not empty at start of read loop");
-#endif
-
         const HANDLE handle = divertHandle.load(std::memory_order_acquire);
         if (handle == INVALID_HANDLE_VALUE ||
             !WinDivertRecv(handle, packetBuf, MAX_PACKETSIZE, &readLen, &addrBuf))

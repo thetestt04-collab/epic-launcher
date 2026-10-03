@@ -168,6 +168,18 @@ static int pingOverlayPosY = PING_OVERLAY_Y;
 
 void showStatus(const char *line);
 
+static volatile LONG hotkeyPressClaimed = 0;
+
+BOOL hotkeyClaimPress()
+{
+    return InterlockedExchange(&hotkeyPressClaimed, 1) == 0;
+}
+
+void hotkeyReleasePress()
+{
+    InterlockedExchange(&hotkeyPressClaimed, 0);
+}
+
 void logMessage(const char *fmt, ...)
 {
 #ifdef _DEBUG
@@ -425,13 +437,16 @@ static void registerHotkey(HWND hWnd)
 
     if (hotkeyToggle == VK_XBUTTON1 || hotkeyToggle == VK_XBUTTON2)
     {
+        // Idempotent, and it revives the thread if it died.
         hotkeyRegistered = StartMouseHookThread();
+        return;
     }
-    else
-    {
-        hotkeyId = 1;
-        hotkeyRegistered = RegisterHotKey(hWnd, hotkeyId, hotkeyModifiers, hotkeyToggle);
-    }
+
+    if (hotkeyRegistered)
+        return;
+
+    hotkeyId = 1;
+    hotkeyRegistered = RegisterHotKey(hWnd, hotkeyId, hotkeyModifiers, hotkeyToggle);
 }
 
 static void unregisterHotkey()
@@ -1236,7 +1251,7 @@ static int uiOnDialogShow(Ihandle *ih, int state)
     if (hotkeyTimer == NULL)
     {
         hotkeyTimer = IupTimer();
-        IupSetAttribute(hotkeyTimer, "TIME", "200");
+        IupSetAttribute(hotkeyTimer, "TIME", "1000");
         IupSetCallback(hotkeyTimer, "ACTION_CB", (Icallback)uiHotkeyTimerCb);
         IupSetAttribute(hotkeyTimer, "RUN", "YES");
     }
@@ -1846,7 +1861,6 @@ static int uiHotkeyTimerCb(Ihandle *ih)
     {
         registerHotkey(hWnd);
     }
-    IupSetAttribute(ih, "RUN", "NO");
     return IUP_DEFAULT;
 }
 
@@ -1968,12 +1982,21 @@ static void updateStartCheck(bool automatic)
 
 static void pollKeyboardHotkeyFallback()
 {
-    if (hotkeyToggle == 0 || hotkeyToggle == VK_XBUTTON1 || hotkeyToggle == VK_XBUTTON2 ||
-        hotkeyRegistered)
+    if (hotkeyToggle == 0)
     {
         hotkeyPressed = FALSE;
         return;
     }
+
+    const bool mouseButtonHotkey = hotkeyToggle == VK_XBUTTON1 || hotkeyToggle == VK_XBUTTON2;
+
+    // Mouse buttons only arrive via WH_MOUSE_LL, which a fullscreen game can bypass.
+    if (hotkeyRegistered && !mouseButtonHotkey)
+    {
+        hotkeyPressed = FALSE;
+        return;
+    }
+
     const bool ctrlDown = (GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0;
     const bool altDown = (GetAsyncKeyState(VK_MENU) & 0x8000) != 0;
     const bool shiftDown = (GetAsyncKeyState(VK_SHIFT) & 0x8000) != 0;
@@ -1996,12 +2019,14 @@ static void pollKeyboardHotkeyFallback()
         if (!hotkeyPressed)
         {
             hotkeyPressed = TRUE;
-            performFilterToggle();
+            if (hotkeyClaimPress())
+                performFilterToggle();
         }
     }
     else if (!down)
     {
         hotkeyPressed = FALSE;
+        hotkeyReleasePress();
     }
 }
 
@@ -2022,6 +2047,8 @@ static void applyHotkeyBinding(const HotkeyBinding &binding)
 {
     unregisterHotkey();
     StopMouseHookThread();
+    hotkeyPressed = FALSE;
+    hotkeyReleasePress();
     if (!configureHotkey(binding.canonical))
     {
         showStatus("That key can't be used as a hotkey.");

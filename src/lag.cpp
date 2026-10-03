@@ -205,11 +205,9 @@ static int releaseOldestPackets(PacketNode *insertionAnchor, int limit)
 static short lagCloseDown(PacketNode *head, PacketNode *tail)
 {
     UNREFERENCED_PARAMETER(head);
-    const int released = releaseOldestPackets(tail->prev, DRAIN_PER_CYCLE);
+    releaseOldestPackets(tail->prev, DRAIN_PER_CYCLE);
     const bool hasMore = !isBufEmpty();
 
-    LOG("Paced lag drain released %d packets; %d remain", released,
-        bufSize.load(std::memory_order_relaxed));
     if (!hasMore)
         endTimePeriod();
 
@@ -255,8 +253,6 @@ static short lagProcess(PacketNode *head, PacketNode *tail)
         lastFlushTime.store(currentTime, std::memory_order_relaxed);
         lastFlushSize.store(pressureReleased, std::memory_order_relaxed);
         flushCount.fetch_add(1, std::memory_order_relaxed);
-        LOG("Lag pressure relief released %d packets; %d remain", pressureReleased,
-            bufSize.load(std::memory_order_relaxed));
     }
     releaseWindowBudget -= releasedThisCycle;
 

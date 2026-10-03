@@ -160,6 +160,10 @@ void logMessage(const char *fmt, ...)
 #endif
     ;
 
+// Shared by the mouse hook thread and the key-state poller so one press toggles once.
+[[nodiscard]] BOOL hotkeyClaimPress();
+void hotkeyReleasePress();
+
 void applyDarkMode();
 
 HWND getMainWindowHandle(void);
