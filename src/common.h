@@ -164,6 +164,9 @@ void logMessage(const char *fmt, ...)
 [[nodiscard]] BOOL hotkeyClaimPress();
 void hotkeyReleasePress();
 
+// Reads live modifier state; shared so hook and poller agree on what was held.
+unsigned currentModifiers();
+
 void applyDarkMode();
 
 HWND getMainWindowHandle(void);

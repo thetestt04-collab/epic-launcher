@@ -5,6 +5,20 @@
 
 static std::atomic_bool resolutionSet{false};
 
+unsigned currentModifiers()
+{
+    unsigned mods = 0;
+    if ((GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0)
+        mods |= MOD_CONTROL;
+    if ((GetAsyncKeyState(VK_MENU) & 0x8000) != 0)
+        mods |= MOD_ALT;
+    if ((GetAsyncKeyState(VK_SHIFT) & 0x8000) != 0)
+        mods |= MOD_SHIFT;
+    if (((GetAsyncKeyState(VK_LWIN) & 0x8000) != 0) || ((GetAsyncKeyState(VK_RWIN) & 0x8000) != 0))
+        mods |= MOD_WIN;
+    return mods;
+}
+
 void startTimePeriod()
 {
     bool expected = false;

@@ -32,15 +32,8 @@ static LRESULT CALLBACK ThreadedMouseHookProc(int nCode, WPARAM wParam, LPARAM l
             if ((hotkeyToggle == VK_XBUTTON1 && button == XBUTTON1) ||
                 (hotkeyToggle == VK_XBUTTON2 && button == XBUTTON2))
             {
-                const bool ctrlDown = (GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0;
-                const bool altDown = (GetAsyncKeyState(VK_MENU) & 0x8000) != 0;
-                const bool shiftDown = (GetAsyncKeyState(VK_SHIFT) & 0x8000) != 0;
-                const bool winDown = ((GetAsyncKeyState(VK_LWIN) & 0x8000) != 0) ||
-                                     ((GetAsyncKeyState(VK_RWIN) & 0x8000) != 0);
-                const bool modifiersMatch = (((hotkeyModifiers & MOD_CONTROL) != 0) == ctrlDown) &&
-                                            (((hotkeyModifiers & MOD_ALT) != 0) == altDown) &&
-                                            (((hotkeyModifiers & MOD_SHIFT) != 0) == shiftDown) &&
-                                            (((hotkeyModifiers & MOD_WIN) != 0) == winDown);
+                const unsigned pressedMods = currentModifiers();
+                const bool modifiersMatch = (pressedMods & hotkeyModifiers) == hotkeyModifiers;
                 if (!modifiersMatch)
                     return CallNextHookEx(NULL, nCode, wParam, lParam);
                 if (configuredButtonDown)

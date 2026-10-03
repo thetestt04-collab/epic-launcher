@@ -170,15 +170,9 @@ void showStatus(const char *line);
 
 static volatile LONG hotkeyPressClaimed = 0;
 
-BOOL hotkeyClaimPress()
-{
-    return InterlockedExchange(&hotkeyPressClaimed, 1) == 0;
-}
+BOOL hotkeyClaimPress() { return InterlockedExchange(&hotkeyPressClaimed, 1) == 0; }
 
-void hotkeyReleasePress()
-{
-    InterlockedExchange(&hotkeyPressClaimed, 0);
-}
+void hotkeyReleasePress() { InterlockedExchange(&hotkeyPressClaimed, 0); }
 
 void logMessage(const char *fmt, ...)
 {
@@ -1997,23 +1991,9 @@ static void pollKeyboardHotkeyFallback()
         return;
     }
 
-    const bool ctrlDown = (GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0;
-    const bool altDown = (GetAsyncKeyState(VK_MENU) & 0x8000) != 0;
-    const bool shiftDown = (GetAsyncKeyState(VK_SHIFT) & 0x8000) != 0;
-    const bool winDown =
-        ((GetAsyncKeyState(VK_LWIN) & 0x8000) != 0) || ((GetAsyncKeyState(VK_RWIN) & 0x8000) != 0);
-    bool down = (GetAsyncKeyState(hotkeyToggle) & 0x8000) != 0;
-    if (down)
-    {
-        if (((hotkeyModifiers & MOD_CONTROL) != 0) != ctrlDown)
-            down = false;
-        if (((hotkeyModifiers & MOD_ALT) != 0) != altDown)
-            down = false;
-        if (((hotkeyModifiers & MOD_SHIFT) != 0) != shiftDown)
-            down = false;
-        if (((hotkeyModifiers & MOD_WIN) != 0) != winDown)
-            down = false;
-    }
+    const unsigned pressedMods = currentModifiers();
+    const bool keyDown = (GetAsyncKeyState(hotkeyToggle) & 0x8000) != 0;
+    const bool down = keyDown && (pressedMods & hotkeyModifiers) == hotkeyModifiers;
     if (down && !capturingHotkey)
     {
         if (!hotkeyPressed)
